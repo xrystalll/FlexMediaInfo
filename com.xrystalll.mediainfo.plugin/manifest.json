@@ -1,0 +1,71 @@
+{
+    "name": "Mediainfo",
+    "uuid": "com.xrystalll.mediainfo",
+    "version": "1.0.0",
+    "author": "xrystalll",
+    "entry": "backend/plugin.cjs",
+    "description": "Show information about playing media",
+    "repo": "https://github.com/xrystalll/FlexMediaInfo",
+    "sdk": {
+        "version": "1.0.7"
+    },
+    "software": {
+        "minimumVersion": "1.3.0"
+    },
+    "os": [
+        {
+            "platform": "windows",
+            "minimumVersion": "10"
+        }
+    ],
+    "device": [
+        {
+            "name": "flexbar",
+            "version": "1.0.0"
+        }
+    ],
+    "configPage": "",
+    "keyLibrary": {
+        "title": "$PluginName",
+        "style": {
+            "icon": "mdi mdi-music-circle-outline"
+        },
+        "children": [
+          {
+              "title": "$Designer.Title",
+              "tip": "$Designer.Tip",
+              "cid": "com.xrystalll.mediainfo.page",
+              "config": {
+                  "keyType": "default",
+                  "clickable": false,
+                  "platform": [
+                      "windows"
+                  ]
+              },
+              "flags": [
+                "disable-fg",
+                "disable-bg-styles"
+              ],
+              "style": {
+                  "bgColor": "#000",
+                  "icon": "mdi mdi-motion-play-outline",
+                  "width": 600
+              },
+              "data": {}
+          }
+        ]
+    },
+    "local": {
+        "en": {
+            "PluginName": "Mediainfo",
+            "Designer": {
+                "Title": "Info Widget",
+                "Tip": "Show player info",
+                "Gradient": "Album Gradient Background",
+                "BarColor": "Progress Bar Color",
+                "BarBg": "Progress Background Color",
+                "ResetColors": "Reset Colors to Default"
+            }
+        }
+    }
+}
