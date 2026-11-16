@@ -53,7 +53,8 @@ const config = {
           src: 'node_modules/@coooookies',
           dest: `${flexPlugin}/backend/node_modules`
         }
-      ]
+      ],
+      verbose: true
     }),
   ],
   external: id => id.endsWith('.node') || id.startsWith('@coooookies')

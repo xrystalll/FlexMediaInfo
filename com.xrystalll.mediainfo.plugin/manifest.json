@@ -1,7 +1,7 @@
 {
     "name": "Mediainfo",
     "uuid": "com.xrystalll.mediainfo",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "author": "xrystalll",
     "entry": "backend/plugin.cjs",
     "description": "Show information about playing media",
