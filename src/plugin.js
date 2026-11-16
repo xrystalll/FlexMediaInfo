@@ -1,6 +1,6 @@
 import { plugin, logger } from "@eniac/flexdesigner";
 import { createCanvas, loadImage } from "canvas";
-const { SMTCMonitor } = require('@coooookies/windows-smtc-monitor');
+const { SMTCMonitor } = require("@coooookies/windows-smtc-monitor");
 
 const canvas = createCanvas(1000, 60);
 const ctx = canvas.getContext("2d");

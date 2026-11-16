@@ -56,7 +56,7 @@ const config = {
       ]
     }),
   ],
-  external: id => id.endsWith('.node') || id.startsWith('@coooookies/windows-smtc-monitor')
+  external: id => id.endsWith('.node') || id.startsWith('@coooookies')
 };
 
 export default config;
