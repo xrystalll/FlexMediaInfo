@@ -2,6 +2,7 @@ import { plugin, logger } from "@eniac/flexdesigner";
 import { createCanvas, loadImage } from "canvas";
 const { SMTCMonitor } = require("@coooookies/windows-smtc-monitor");
 
+const FONT_STACK = '"Segoe UI", "Microsoft YaHei", "Meiryo", "Malgun Gothic", sans-serif';
 const canvas = createCanvas(1000, 60);
 const ctx = canvas.getContext("2d");
 
@@ -377,7 +378,7 @@ async function renderMediaWidget(serialNumber, key) {
             textStartX,
             23,
             maxTitleWidth,
-            "bold 19px Arial",
+            `bold 19px ${FONT_STACK}`,
             "#FFFFFF",
             marqueeState.titleOffset
         );
@@ -389,7 +390,7 @@ async function renderMediaWidget(serialNumber, key) {
             textStartX,
             45,
             maxArtistWidth,
-            "14px Arial",
+            `14px ${FONT_STACK}`,
             "#AAAAAA",
             marqueeState.artistOffset
         );
@@ -401,7 +402,7 @@ async function renderMediaWidget(serialNumber, key) {
             textStartX,
             35,
             maxTitleWidth,
-            "bold 19px Arial",
+            `bold 19px ${FONT_STACK}`,
             "#FFFFFF",
             marqueeState.titleOffset
         );
@@ -456,9 +457,9 @@ function advanceMarquee(key) {
 
     let timeBlockWidth = 0;
     if (mediaData.duration > 0) {
-        ctx.font = "bold 14px Arial";
+        ctx.font = `bold 14px ${FONT_STACK}`; 
         const currentW = ctx.measureText(formatTime(mediaData.position)).width;
-        ctx.font = "14px Arial";
+        ctx.font = `14px ${FONT_STACK}`;
         const totalW = ctx.measureText(` / ${formatTime(mediaData.duration)}`).width;
         timeBlockWidth = currentW + totalW + 10;
     }
@@ -470,7 +471,7 @@ function advanceMarquee(key) {
         ? width - textStartX - rightPadding
         : width - textStartX - rightPadding - timeBlockWidth;
 
-    ctx.font = "bold 19px Arial";
+    ctx.font = `bold 19px ${FONT_STACK}`;
     const titleWidth = ctx.measureText(mediaData.title || "").width;
 
     if (titleWidth > maxTitleWidth && maxTitleWidth > 0) {
@@ -492,7 +493,7 @@ function advanceMarquee(key) {
     // 2. Check Artist overflow
     if (mediaData.artist) {
         const maxArtistWidth = width - textStartX - rightPadding - timeBlockWidth;
-        ctx.font = "14px Arial";
+        ctx.font = `14px ${FONT_STACK}`;
         const artistWidth = ctx.measureText(mediaData.artist).width;
 
         if (artistWidth > maxArtistWidth && maxArtistWidth > 0) {
