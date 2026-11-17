@@ -5,7 +5,7 @@ import path from "node:path";
 import url from "node:url";
 import json from '@rollup/plugin-json';
 import { glob } from 'glob';
-import copy from 'rollup-plugin-copy';
+
 const isWatching = !!process.env.ROLLUP_WATCH;
 const flexPlugin = "com.xrystalll.mediainfo.plugin";
 
@@ -41,23 +41,12 @@ const config = {
     }),
     commonjs(),
     !isWatching && terser(),
-    {
-      name: "emit-module-package-file",
-      generateBundle() {
-        this.emitFile({ fileName: "package.json", source: `{ "type": "module" }`, type: "asset" });
-      }
-    },
-    copy({
-      targets: [
-        {
-          src: 'node_modules/@coooookies',
-          dest: `${flexPlugin}/backend/node_modules`
-        }
-      ],
-      verbose: true
-    }),
   ],
-  external: id => id.endsWith('.node') || id.startsWith('@coooookies')
+  external: [
+    '@coooookies/windows-smtc-monitor',
+    'canvas',
+    /^node:/
+  ],
 };
 
 export default config;

@@ -45,6 +45,9 @@ let debounceTimer = null;
 let isUpdating = false;
 let lastDrawnImage = "";
 
+const MARQUEE_SEPARATOR = "     •     ";
+const MARQUEE_STEP_PX = 4;
+
 function registerDevice(serialNumber, keys) {
     device.serialNumber = serialNumber;
     device.keys = keys || [];
@@ -210,6 +213,7 @@ async function updateMediaState(retryCount = 0) {
         isUpdating = false;
     }
 }
+
 function getActiveKey() {
     if (device.keys && Array.isArray(device.keys) && device.keys.length > 0) {
         return device.keys.find(k => k.cid === "com.xrystalll.mediainfo.page") || device.keys;
@@ -219,6 +223,7 @@ function getActiveKey() {
 
 function startMonitor() {
     const key = getActiveKey();
+
     if (key && mediaData.sessionId) {
         mediaData.position = getCalculatedPosition();
         renderMediaWidget(device.serialNumber, key);
@@ -232,6 +237,7 @@ function startMonitor() {
             if (mediaData.isPlaying && mediaData.duration > 0 && !isUpdating) {
                 mediaData.position = getCalculatedPosition();
                 const activeKey = getActiveKey();
+
                 if (activeKey) {
                     renderMediaWidget(device.serialNumber, activeKey);
                 }
@@ -243,6 +249,7 @@ function startMonitor() {
     if (!marqueeTimer) {
         marqueeTimer = setInterval(() => {
             if (isUpdating) return;
+
             const activeKey = getActiveKey();
             if (!activeKey) return;
 
@@ -270,6 +277,7 @@ function stopMonitor() {
 
 function checkWidgetVisibility() {
     const key = getActiveKey();
+
     if (key) {
         startMonitor();
     } else {
@@ -290,6 +298,7 @@ async function renderMediaWidget(serialNumber, key) {
 
     // 1. Background: smooth 5-stop horizontal gradient or pure black
     ctx.clearRect(0, 0, width, height);
+
     const useGradient = customSettings.enableGradient !== null
         ? customSettings.enableGradient
         : (key.data?.enableGradient !== false);
@@ -299,6 +308,7 @@ async function renderMediaWidget(serialNumber, key) {
 
         if (mediaData.accentColor) {
             const { r, g, b } = mediaData.accentColor;
+
             bgGradient.addColorStop(0,    `rgb(${r}, ${g}, ${b})`);
             bgGradient.addColorStop(0.25, `rgb(${Math.round(r * 0.62)}, ${Math.round(g * 0.62)}, ${Math.round(b * 0.62)})`);
             bgGradient.addColorStop(0.50, `rgb(${Math.round(r * 0.30)}, ${Math.round(g * 0.30)}, ${Math.round(b * 0.30)})`);
@@ -335,6 +345,7 @@ async function renderMediaWidget(serialNumber, key) {
 
     // 3. Playback time aligned with artist row on the right ("0:00 / 0:00")
     let timeBlockWidth = 0;
+
     if (mediaData.duration > 0) {
         const currentStr = formatTime(mediaData.position);
         const totalStr = ` / ${formatTime(mediaData.duration)}`;
@@ -359,6 +370,7 @@ async function renderMediaWidget(serialNumber, key) {
 
     if (mediaData.artist) {
         const maxTitleWidth = width - textStartX - rightPadding;
+
         drawScrollingText(
             ctx,
             mediaData.title,
@@ -416,6 +428,7 @@ async function renderMediaWidget(serialNumber, key) {
         if (base64Image === lastDrawnImage) {
             return;
         }
+
         lastDrawnImage = base64Image;
 
         key.style.showImage = true;
@@ -430,8 +443,6 @@ async function renderMediaWidget(serialNumber, key) {
         logger.error("Failed to encode canvas buffer:", encodeError);
     }
 }
-const MARQUEE_SEPARATOR = "     •     ";
-const MARQUEE_STEP_PX = 4;
 
 // Calculate next marquee step; returns true only if a redraw is needed
 function advanceMarquee(key) {
