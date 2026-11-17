@@ -1,5 +1,6 @@
 import { plugin, logger } from "@eniac/flexdesigner";
 import { createCanvas, loadImage } from "canvas";
+import { exec } from "child_process";
 const { SMTCMonitor } = require("@coooookies/windows-smtc-monitor");
 
 const FONT_STACK = '"Segoe UI", "Microsoft YaHei", "Meiryo", "Malgun Gothic", sans-serif';
@@ -7,6 +8,9 @@ const canvas = createCanvas(1000, 60);
 const ctx = canvas.getContext("2d");
 
 const monitor = new SMTCMonitor();
+
+const PS_PLAY_PAUSE_SCRIPT = `$w = Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, int dwExtraInfo);' -Name 'Win32Key' -Namespace 'Win32' -PassThru; $w::keybd_event(0xB3, 0, 0, 0); $w::keybd_event(0xB3, 0, 2, 0)`;
+const ENCODED_PLAY_PAUSE_CMD = `powershell -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand ${Buffer.from(PS_PLAY_PAUSE_SCRIPT, "utf16le").toString("base64")}`;
 
 let device = {
     serialNumber: "",
@@ -45,6 +49,7 @@ let marqueeTimer = null;
 let debounceTimer = null;
 let isUpdating = false;
 let lastDrawnImage = "";
+let lastPlayPauseState = null;
 
 const MARQUEE_SEPARATOR = "     •     ";
 const MARQUEE_STEP_PX = 4;
@@ -53,6 +58,7 @@ function registerDevice(serialNumber, keys) {
     device.serialNumber = serialNumber;
     device.keys = keys || [];
     lastDrawnImage = "";
+    lastPlayPauseState = null;
 }
 
 function resetMarquee() {
@@ -66,8 +72,10 @@ function getCalculatedPosition() {
     if (!mediaData.isPlaying || mediaData.lastSyncTime === 0) {
         return mediaData.basePosition;
     }
+
     const elapsedSec = (Date.now() - mediaData.lastSyncTime) / 1000;
     const current = mediaData.basePosition + elapsedSec;
+
     return mediaData.duration > 0 ? Math.min(current, mediaData.duration) : current;
 }
 
@@ -100,13 +108,24 @@ monitor.on("session-timeline-changed", (appId) => {
     }
 });
 
+function toggleMediaPlayback() {
+    exec(ENCODED_PLAY_PAUSE_CMD, (err, stdout, stderr) => {
+        if (err) {
+            logger.error("Failed to send media play/pause key:", stderr || err.message);
+        }
+    });
+}
+
 async function updateMediaState(retryCount = 0) {
     if (isUpdating) return;
+
     isUpdating = true;
 
     try {
         const key = getActiveKey();
-        if (!key) return;
+        const playPauseKeys = getPlayPauseKeys();
+
+        if (!key && playPauseKeys.length === 0) return;
 
         let session = null;
         try {
@@ -134,7 +153,11 @@ async function updateMediaState(retryCount = 0) {
             mediaData.position = 0;
             mediaData.isPlaying = false;
             resetMarquee();
-            await renderMediaWidget(device.serialNumber, key);
+            updatePlayPauseButtons();
+
+            if (key) {
+                await renderMediaWidget(device.serialNumber, key);
+            }
             return;
         }
 
@@ -179,6 +202,10 @@ async function updateMediaState(retryCount = 0) {
         mediaData.isPlaying = newIsPlaying;
         mediaData.position = getCalculatedPosition();
 
+        updatePlayPauseButtons();
+
+        if (!key) return;
+
         let thumb = null;
         try {
             thumb = media?.thumbnail;
@@ -217,9 +244,36 @@ async function updateMediaState(retryCount = 0) {
 
 function getActiveKey() {
     if (device.keys && Array.isArray(device.keys) && device.keys.length > 0) {
-        return device.keys.find(k => k.cid === "com.xrystalll.mediainfo.page") || device.keys;
+        return device.keys.find(k => k.cid === "com.xrystalll.mediainfo.page") || null;
     }
     return null;
+}
+
+function getPlayPauseKeys() {
+    if (device.keys && Array.isArray(device.keys) && device.keys.length > 0) {
+        return device.keys.filter(k => k.cid === "com.xrystalll.mediainfo.playpause");
+    }
+    return [];
+}
+
+function updatePlayPauseButtons(force = false) {
+    const buttons = getPlayPauseKeys();
+
+    if (buttons.length === 0 || !device.serialNumber) return;
+
+    if (!force && lastPlayPauseState === mediaData.isPlaying) return;
+    lastPlayPauseState = mediaData.isPlaying;
+
+    const targetIcon = mediaData.isPlaying ? "mdi mdi-pause" : "mdi mdi-play";
+
+    for (const btn of buttons) {
+        btn.style = btn.style || {};
+        btn.style.showIcon = true;
+        btn.style.showImage = false;
+        btn.style.icon = targetIcon;
+
+        plugin.draw(device.serialNumber, btn, "draw");
+    }
 }
 
 function startMonitor() {
@@ -230,6 +284,7 @@ function startMonitor() {
         renderMediaWidget(device.serialNumber, key);
     }
 
+    updatePlayPauseButtons(true);
     updateMediaState();
 
     // Update playback seconds and progress bar once per second
@@ -252,6 +307,7 @@ function startMonitor() {
             if (isUpdating) return;
 
             const activeKey = getActiveKey();
+
             if (!activeKey) return;
 
             if (advanceMarquee(activeKey)) {
@@ -278,8 +334,9 @@ function stopMonitor() {
 
 function checkWidgetVisibility() {
     const key = getActiveKey();
+    const playPauseKeys = getPlayPauseKeys();
 
-    if (key) {
+    if (key || playPauseKeys.length > 0) {
         startMonitor();
     } else {
         stopMonitor();
@@ -384,6 +441,7 @@ async function renderMediaWidget(serialNumber, key) {
         );
 
         const maxArtistWidth = width - textStartX - rightPadding - timeBlockWidth;
+
         drawScrollingText(
             ctx,
             mediaData.artist,
@@ -396,6 +454,7 @@ async function renderMediaWidget(serialNumber, key) {
         );
     } else {
         const maxTitleWidth = width - textStartX - rightPadding - timeBlockWidth;
+
         drawScrollingText(
             ctx,
             mediaData.title,
@@ -426,9 +485,7 @@ async function renderMediaWidget(serialNumber, key) {
         const imageBuffer = canvas.toBuffer("image/png");
         const base64Image = imageBuffer.toString("base64");
 
-        if (base64Image === lastDrawnImage) {
-            return;
-        }
+        if (base64Image === lastDrawnImage) return;
 
         lastDrawnImage = base64Image;
 
@@ -456,8 +513,9 @@ function advanceMarquee(key) {
     const textStartX = padding + artSize + 8;
 
     let timeBlockWidth = 0;
+
     if (mediaData.duration > 0) {
-        ctx.font = `bold 14px ${FONT_STACK}`; 
+        ctx.font = `bold 14px ${FONT_STACK}`;
         const currentW = ctx.measureText(formatTime(mediaData.position)).width;
         ctx.font = `14px ${FONT_STACK}`;
         const totalW = ctx.measureText(` / ${formatTime(mediaData.duration)}`).width;
@@ -480,6 +538,7 @@ function advanceMarquee(key) {
         } else {
             const loopWidth = ctx.measureText(mediaData.title + MARQUEE_SEPARATOR).width;
             marqueeState.titleOffset += MARQUEE_STEP_PX;
+
             if (marqueeState.titleOffset >= loopWidth) {
                 marqueeState.titleOffset = 0;
                 marqueeState.titlePauseTicks = 10;
@@ -541,6 +600,7 @@ function drawScrollingText(ctx, text, x, y, maxWidth, font, color, offset) {
     const drawX = x - offset;
 
     ctx.fillText(fullLoopText, drawX, y);
+
     if (drawX + loopWidth < x + maxWidth) {
         ctx.fillText(fullLoopText, drawX + loopWidth, y);
     }
@@ -572,6 +632,7 @@ function extractAccentColor(img) {
             if (brightness < 25 || brightness > 235) continue;
 
             const score = delta * 1.5 + brightness * 0.3;
+
             if (score > maxScore) {
                 maxScore = score;
                 bestColor = { r, g, b };
@@ -583,6 +644,7 @@ function extractAccentColor(img) {
         }
 
         const dimFactor = 0.42;
+
         return {
             r: Math.round(bestColor.r * dimFactor),
             g: Math.round(bestColor.g * dimFactor),
@@ -632,10 +694,12 @@ function formatTime(totalSeconds) {
     const secs = seconds % 60;
 
     const paddedSecs = secs < 10 ? `0${secs}` : secs;
+
     if (hrs > 0) {
         const paddedMins = mins < 10 ? `0${mins}` : mins;
         return `${hrs}:${paddedMins}:${paddedSecs}`;
     }
+
     return `${mins}:${paddedSecs}`;
 }
 
@@ -661,21 +725,36 @@ function applyUpdatedKeys(payload) {
         if (idx !== -1) {
             device.keys[idx] = payload.key;
         } else {
-            device.keys = [payload.key];
+            device.keys.push(payload.key);
         }
     }
+
     lastDrawnImage = "";
+    lastPlayPauseState = null;
 }
+
+// Handle Play/Pause key press on Flexbar
+plugin.on("plugin.data", (payload) => {
+    const key = payload?.data?.key;
+
+    if (key?.cid === "com.xrystalll.mediainfo.playpause") {
+        toggleMediaPlayback();
+
+        return { status: "success", message: "Play/Pause toggled" };
+    }
+});
 
 // Receive live settings updates from UI
 plugin.on("ui.message", (payload) => {
     const data = payload?.data || payload;
+
     if (data?.type === "update-settings") {
         customSettings.progressColor = data.progressColor;
         customSettings.progressBgColor = data.progressBgColor;
         customSettings.enableGradient = data.enableGradient;
         lastDrawnImage = "";
         const key = getActiveKey();
+
         if (key) {
             renderMediaWidget(device.serialNumber, key);
         }

@@ -1,7 +1,7 @@
 {
     "name": "Mediainfo",
     "uuid": "com.xrystalll.mediainfo",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "author": "xrystalll",
     "entry": "backend/plugin.cjs",
     "description": "Show information about playing media",
@@ -52,6 +52,24 @@
                   "width": 600
               },
               "data": {}
+          },
+          {
+              "title": "$Designer.PlayPauseTitle",
+              "tip": "$Designer.PlayPauseTip",
+              "cid": "com.xrystalll.mediainfo.playpause",
+              "config": {
+                  "keyType": "default",
+                  "clickable": true,
+                  "platform": [
+                      "windows"
+                  ]
+              },
+              "style": {
+                  "bgColor": "#212121",
+                  "icon": "mdi mdi-play",
+                  "width": 120
+              },
+              "data": {}
           }
         ]
     },
@@ -61,6 +79,8 @@
             "Designer": {
                 "Title": "Info Widget",
                 "Tip": "Show player info",
+                "PlayPauseTitle": "Play / Pause",
+                "PlayPauseTip": "Toggle media playback",
                 "Gradient": "Album Gradient Background",
                 "BarColor": "Progress Bar Color",
                 "BarBg": "Progress Background Color",
